@@ -1,55 +1,55 @@
+import { Router } from 'express'
 import Groq from 'groq-sdk'
-import { buildSystemPrompt, buildUserPrompt } from '../lib/promptBuilder.js'
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+export const generateRoute = Router()
 
-export const generateRoute = async (req, res) => {
+generateRoute.post('/', async (req, res) => {
   const { brief, formatId, toneId } = req.body
 
-  // Validate inputs
-  if (!brief || !formatId || !toneId) {
-    return res.status(400).json({ error: 'brief, formatId, and toneId are required' })
-  }
-  if (brief.trim().length < 5) {
-    return res.status(400).json({ error: 'Brief is too short. Give us something to work with.' })
-  }
-  if (brief.length > 1000) {
-    return res.status(400).json({ error: 'Brief exceeds 1000 characters.' })
+  if (!brief) {
+    return res.status(400).json({ error: 'Brief is required' })
   }
 
-  // Set SSE headers
-  res.setHeader('Content-Type', 'text/event-stream')
-  res.setHeader('Cache-Control', 'no-cache')
-  res.setHeader('Connection', 'keep-alive')
-  res.flushHeaders()
+  // Setup Server-Sent Events
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  })
 
   try {
-    const systemPrompt = buildSystemPrompt(formatId)
-    const userPrompt = buildUserPrompt(brief, toneId)
-
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy_key' })
     const stream = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
+      max_tokens: 1024,
       stream: true,
-      max_tokens: 1000
-    })
+      messages: [
+        { role: 'system', content: `You are an expert social media and content manager. Your goal is to generate HIGH-REACH, VIRAL content that is heavily optimized for algorithm engagement. 
+The user will provide a brief. The required format is ${formatId}. The tone should be ${toneId}. 
 
+Follow these strict rules:
+1. Start with an irresistible, punchy hook.
+2. Use spacing optimally (e.g., single-line sentences for Twitter readability).
+3. Provoke a response (ask a question or make a bold claim to drive replies).
+4. Do not use cringe hashtags unless absolutely necessary for the niche.
+Generate content accordingly.` },
+        { role: 'user', content: brief }
+      ]
+    })
+    
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content || ''
       if (text) {
         res.write(`data: ${JSON.stringify({ text })}\n\n`)
       }
     }
-
+    
     res.write('data: [DONE]\n\n')
     res.end()
 
   } catch (err) {
-    console.error('Generate error:', err)
-    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`)
+    console.error('Groq API Error:', err)
+    res.write(`data: ${JSON.stringify({ error: err.message || 'Failed to generate content' })}\n\n`)
     res.end()
   }
-}
+})
