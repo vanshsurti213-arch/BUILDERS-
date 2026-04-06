@@ -1,19 +1,28 @@
 {
-  "name": "contentgen",
+  "name": "contentgen-v2",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "node --watch server/index.js",
     "dev:client": "cd client && npm run dev",
     "build": "cd client && npm run build",
-    "start": "NODE_ENV=production node server/index.js"
+    "start": "NODE_ENV=production node server/index.js",
+    "n8n": "npx n8n start --tunnel"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.0",
+    "better-sqlite3": "^12.8.0",
     "concurrently": "^8.0.0",
+    "connect-sqlite3": "^0.9.13",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
     "express": "^4.18.0",
-    "groq-sdk": "^1.1.2"
-  },
-  "type": "module"
+    "express-session": "^1.17.3",
+    "groq-sdk": "^1.1.2",
+    "node-cron": "^3.0.3",
+    "node-fetch": "^3.3.2",
+    "snoowrap": "^1.23.0",
+    "twitter-api-v2": "^1.29.0"
+  }
 }
